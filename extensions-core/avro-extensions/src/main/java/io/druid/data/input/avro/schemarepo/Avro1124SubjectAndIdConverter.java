@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.druid.data.input.schemarepo;
+package io.druid.data.input.avro.schemarepo;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.metamx.common.Pair;
+import io.druid.data.input.avro.SubjectAndIdConverter;
 import org.schemarepo.api.converter.Converter;
 import org.schemarepo.api.converter.IdentityConverter;
 import org.schemarepo.api.converter.IntegerConverter;
