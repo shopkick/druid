@@ -26,9 +26,8 @@ import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.inject.Binder;
-import io.druid.data.input.AvroHadoopInputRowParser;
-import io.druid.data.input.AvroStreamInputRowParser;
-import io.druid.data.input.schemarepo.Avro1124RESTRepositoryClientWrapper;
+import io.druid.data.input.avro.confluent.CachedSchemaRepositoryClientWrapper;
+import io.druid.data.input.avro.schemarepo.Avro1124RESTRepositoryClientWrapper;
 import io.druid.initialization.DruidModule;
 import org.schemarepo.InMemoryRepository;
 import org.schemarepo.Repository;
@@ -74,7 +73,7 @@ abstract class JsonUtilMixIn
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", defaultImpl = Avro1124RESTRepositoryClientWrapper.class)
 @JsonSubTypes(value = {
     @JsonSubTypes.Type(name = "avro_1124_rest_client", value = Avro1124RESTRepositoryClientWrapper.class),
-    @JsonSubTypes.Type(name = "in_memory_for_unit_test", value = InMemoryRepository.class)
+    @JsonSubTypes.Type(name = "confluent_client", value = CachedSchemaRepositoryClientWrapper.class)
 })
 abstract class RepositoryMixIn
 {
