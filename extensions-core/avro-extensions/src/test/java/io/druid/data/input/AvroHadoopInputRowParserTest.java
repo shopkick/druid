@@ -21,6 +21,7 @@ package io.druid.data.input;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.io.Closeables;
 import com.google.common.io.Files;
+import io.druid.data.input.avro.AvroHadoopInputRowParser;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.file.FileReader;
