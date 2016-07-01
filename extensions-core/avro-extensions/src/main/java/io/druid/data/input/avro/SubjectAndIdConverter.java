@@ -44,7 +44,7 @@ import java.nio.ByteBuffer;
  * You can implement your own SubjectAndIdConverter based on your scenario, such as using canonical name of avro schema
  * as subject name and incrementing short integer which serialized using varint.
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", defaultImpl = Avro1124SubjectAndIdConverter.class)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", defaultImpl = ConfluentSubjectAndIdConverter.class)
 @JsonSubTypes(value = {
     @JsonSubTypes.Type(name = "avro_1124", value = Avro1124SubjectAndIdConverter.class),
     @JsonSubTypes.Type(name = "confluent", value = ConfluentSubjectAndIdConverter.class)

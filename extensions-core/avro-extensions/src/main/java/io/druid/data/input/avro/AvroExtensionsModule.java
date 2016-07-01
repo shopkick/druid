@@ -51,9 +51,9 @@ public class AvroExtensionsModule implements DruidModule
                 new NamedType(AvroStreamInputRowParser.class, "avro_stream"),
                 new NamedType(AvroHadoopInputRowParser.class, "avro_hadoop")
             )
-            .setMixInAnnotation(Repository.class, RepositoryMixIn.class)
+//            .setMixInAnnotation(InMemoryRepository.class, InMemoryRepositoryMixIn.class)
+            .setMixInAnnotation(IAvroSchemaRepository.class, RepositoryMixIn.class)
             .setMixInAnnotation(JsonUtil.class, JsonUtilMixIn.class)
-            .setMixInAnnotation(InMemoryRepository.class, InMemoryRepositoryMixIn.class)
     );
   }
 
@@ -70,20 +70,21 @@ abstract class JsonUtilMixIn
 {
 }
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", defaultImpl = Avro1124RESTRepositoryClientWrapper.class)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type", defaultImpl = CachedSchemaRepositoryClientWrapper.class)
 @JsonSubTypes(value = {
     @JsonSubTypes.Type(name = "avro_1124_rest_client", value = Avro1124RESTRepositoryClientWrapper.class),
-    @JsonSubTypes.Type(name = "confluent_client", value = CachedSchemaRepositoryClientWrapper.class)
+    @JsonSubTypes.Type(name = "confluent_client", value = CachedSchemaRepositoryClientWrapper.class),
+    @JsonSubTypes.Type(name = "in_memory_client", value = InMemoryAvroSchemaRepository.class),
 })
 abstract class RepositoryMixIn
 {
 }
 
-abstract class InMemoryRepositoryMixIn
-{
-  @JsonCreator
-  public InMemoryRepositoryMixIn(@JsonProperty("validators") ValidatorFactory validators)
-  {
-  }
-}
+//abstract class InMemoryRepositoryMixIn
+//{
+//  @JsonCreator
+//  public InMemoryRepositoryMixIn(@JsonProperty("validators") ValidatorFactory validators)
+//  {
+//  }
+//}
 

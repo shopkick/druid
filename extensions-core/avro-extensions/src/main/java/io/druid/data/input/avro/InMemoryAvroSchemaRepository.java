@@ -1,4 +1,4 @@
-package io.druid.data.input;
+package io.druid.data.input.avro;
 
 import io.druid.data.input.avro.IAvroSchemaRepository;
 import org.apache.avro.Schema;

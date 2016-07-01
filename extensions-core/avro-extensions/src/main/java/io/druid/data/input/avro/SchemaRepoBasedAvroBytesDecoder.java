@@ -28,6 +28,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.util.ByteBufferInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -64,11 +66,29 @@ public class SchemaRepoBasedAvroBytesDecoder<SUBJECT, ID> implements AvroBytesDe
   public GenericRecord parse(ByteBuffer bytes)
   {
     Pair<SUBJECT, ID> subjectAndId = subjectAndIdConverter.getSubjectAndId(bytes);
+
     Schema schema = null;
     try {
       schema = schemaRepository.getSchema(subjectAndId.lhs, subjectAndId.rhs);
+
+      if(schema == null) {
+        throw new IllegalStateException(
+                String.format(
+                        "Unable to retrieve the schema (%s, %s) from the registry.",
+                        subjectAndId.lhs,
+                        subjectAndId.rhs
+                )
+        );
+      }
     } catch (IOException e) {
-      throw new IllegalStateException("Unable to retrieve the schema from the registry.", e);
+      throw new IllegalStateException(
+              String.format(
+                      "Unable to retrieve the schema (%s, %s) from the registry.",
+                      subjectAndId.lhs,
+                      subjectAndId.rhs
+              ),
+              e
+      );
     }
     DatumReader<GenericRecord> reader = new GenericDatumReader<GenericRecord>(schema);
     ByteBufferInputStream inputStream = new ByteBufferInputStream(Collections.singletonList(bytes));
@@ -76,7 +96,7 @@ public class SchemaRepoBasedAvroBytesDecoder<SUBJECT, ID> implements AvroBytesDe
       return reader.read(null, DecoderFactory.get().binaryDecoder(inputStream, null));
     }
     catch (IOException e) {
-      throw new ParseException(e, "Fail to decode avro message!");
+      throw new ParseException(e, "Failed to decode avro message!");
     }
   }
 
