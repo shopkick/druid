@@ -137,6 +137,20 @@
                             </descriptors>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>sk_distro-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <finalName>sk_${project.parent.artifactId}-${project.parent.version}</finalName>
+                            <tarLongFileMode>posix</tarLongFileMode>
+                            <descriptors>
+                                <descriptor>src/assembly/sk_assembly.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
