@@ -74,8 +74,13 @@ public class ListFilteredDimensionSpec extends BaseFilteredDimensionSpec
       return selector;
     }
 
-    int selectorCardinality = selector.getValueCardinality();
-    int cardinality = isWhitelist ? values.size() : selectorCardinality - values.size();
+    final int selectorCardinality = selector.getValueCardinality();
+    if (selectorCardinality < 0) {
+      throw new UnsupportedOperationException("Cannot decorate a selector with no dictionary");
+    }
+
+    // Upper bound on cardinality of the filtered spec.
+    final int cardinality = isWhitelist ? values.size() : selectorCardinality;
 
     int count = 0;
     final Map<Integer,Integer> forwardMapping = new HashMap<>(cardinality);
