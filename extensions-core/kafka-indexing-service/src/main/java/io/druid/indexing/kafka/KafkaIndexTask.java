@@ -409,6 +409,10 @@ public class KafkaIndexTask extends AbstractTask implements ChatHandler
               }
 
               try {
+                if(record.value() == null) {
+                    throw new ParseException("The record value was null.");
+                }
+
                 final InputRow row = Preconditions.checkNotNull(parser.parse(ByteBuffer.wrap(record.value())), "row");
 
                 if (!ioConfig.getMinimumMessageTime().isPresent() ||
