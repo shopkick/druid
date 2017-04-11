@@ -72,7 +72,7 @@ public class SchemaRepoBasedAvroBytesDecoder<SUBJECT, ID> implements AvroBytesDe
       schema = schemaRepository.getSchema(subjectAndId.lhs, subjectAndId.rhs);
 
       if(schema == null) {
-        throw new IllegalStateException(
+        throw new ParseException(
                 String.format(
                         "Unable to retrieve the schema (%s, %s) from the registry.",
                         subjectAndId.lhs,
