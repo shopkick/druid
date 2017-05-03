@@ -16,22 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.druid.data.input.schemarepo;
+package io.druid.data.input.avro.schemarepo;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.druid.data.input.avro.IAvroSchemaRepository;
+import org.apache.avro.Schema;
+import org.schemarepo.api.TypedSchemaRepository;
+import org.schemarepo.api.converter.AvroSchemaConverter;
 import org.schemarepo.client.Avro1124RESTRepositoryClient;
 
-public class Avro1124RESTRepositoryClientWrapper extends Avro1124RESTRepositoryClient
+import java.io.IOException;
+
+public class Avro1124RESTRepositoryClientWrapper
+        extends Avro1124RESTRepositoryClient implements IAvroSchemaRepository<String, Integer>
 {
+  private final TypedSchemaRepository<Integer, Schema, String> typedRepository;
   private final String url;
 
   public Avro1124RESTRepositoryClientWrapper(
-      @JsonProperty("url") String url
+      @JsonProperty("url") String url,
+      @JsonProperty("topic") String topic
   )
   {
     super(url);
     this.url = url;
+    Avro1124SubjectAndIdConverter converter = new Avro1124SubjectAndIdConverter(topic);
+    typedRepository = new TypedSchemaRepository<Integer, Schema, String>(
+            this,
+            converter.getIdConverter(),
+            new AvroSchemaConverter(false),
+            converter.getSubjectConverter()
+    );
   }
 
   @JsonIgnore
@@ -66,5 +82,10 @@ public class Avro1124RESTRepositoryClientWrapper extends Avro1124RESTRepositoryC
   public int hashCode()
   {
     return url != null ? url.hashCode() : 0;
+  }
+
+  @Override
+  public Schema getSchema(String subject, Integer id) throws IOException {
+    return typedRepository.getSchema(subject, id);
   }
 }

@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.druid.data.input;
+package io.druid.data.input.avro;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.druid.data.input.InputRow;
 import io.druid.data.input.impl.InputRowParser;
 import io.druid.data.input.impl.ParseSpec;
 import org.apache.avro.generic.GenericRecord;

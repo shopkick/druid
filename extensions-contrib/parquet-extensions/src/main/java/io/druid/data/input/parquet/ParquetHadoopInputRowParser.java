@@ -21,7 +21,7 @@ package io.druid.data.input.parquet;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Lists;
-import io.druid.data.input.AvroStreamInputRowParser;
+import io.druid.data.input.avro.AvroStreamInputRowParser;
 import io.druid.data.input.InputRow;
 import io.druid.data.input.MapBasedInputRow;
 import io.druid.data.input.avro.GenericRecordAsMap;

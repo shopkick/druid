@@ -20,20 +20,14 @@ package io.druid.data.input.avro;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import io.druid.data.input.schemarepo.SubjectAndIdConverter;
 import io.druid.java.util.common.Pair;
 import io.druid.java.util.common.parsers.ParseException;
-
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.util.ByteBufferInputStream;
-import org.schemarepo.Repository;
-import org.schemarepo.api.TypedSchemaRepository;
-import org.schemarepo.api.converter.AvroSchemaConverter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -41,28 +35,21 @@ import java.util.Collections;
 
 public class SchemaRepoBasedAvroBytesDecoder<SUBJECT, ID> implements AvroBytesDecoder
 {
-  private final TypedSchemaRepository<ID, Schema, SUBJECT> typedRepository;
+  private final IAvroSchemaRepository<SUBJECT, ID> schemaRepository;
   private final SubjectAndIdConverter<SUBJECT, ID> subjectAndIdConverter;
-  private final Repository schemaRepository;
 
   @JsonCreator
   public SchemaRepoBasedAvroBytesDecoder(
       @JsonProperty("subjectAndIdConverter") SubjectAndIdConverter<SUBJECT, ID> subjectAndIdConverter,
-      @JsonProperty("schemaRepository") Repository schemaRepository
+      @JsonProperty("schemaRepository") IAvroSchemaRepository<SUBJECT, ID> schemaRepository
   )
   {
     this.subjectAndIdConverter = subjectAndIdConverter;
     this.schemaRepository = schemaRepository;
-    typedRepository = new TypedSchemaRepository<ID, Schema, SUBJECT>(
-        schemaRepository,
-        subjectAndIdConverter.getIdConverter(),
-        new AvroSchemaConverter(false),
-        subjectAndIdConverter.getSubjectConverter()
-    );
   }
 
   @JsonProperty
-  public Repository getSchemaRepository()
+  public IAvroSchemaRepository<SUBJECT, ID> getSchemaRepository()
   {
     return schemaRepository;
   }
@@ -77,14 +64,37 @@ public class SchemaRepoBasedAvroBytesDecoder<SUBJECT, ID> implements AvroBytesDe
   public GenericRecord parse(ByteBuffer bytes)
   {
     Pair<SUBJECT, ID> subjectAndId = subjectAndIdConverter.getSubjectAndId(bytes);
-    Schema schema = typedRepository.getSchema(subjectAndId.lhs, subjectAndId.rhs);
+
+    Schema schema = null;
+    try {
+      schema = schemaRepository.getSchema(subjectAndId.lhs, subjectAndId.rhs);
+
+      if(schema == null) {
+        throw new ParseException(
+                String.format(
+                        "Unable to retrieve the schema (%s, %s) from the registry.",
+                        subjectAndId.lhs,
+                        subjectAndId.rhs
+                )
+        );
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException(
+              String.format(
+                      "Unable to retrieve the schema (%s, %s) from the registry.",
+                      subjectAndId.lhs,
+                      subjectAndId.rhs
+              ),
+              e
+      );
+    }
     DatumReader<GenericRecord> reader = new GenericDatumReader<GenericRecord>(schema);
     ByteBufferInputStream inputStream = new ByteBufferInputStream(Collections.singletonList(bytes));
     try {
       return reader.read(null, DecoderFactory.get().binaryDecoder(inputStream, null));
     }
     catch (IOException e) {
-      throw new ParseException(e, "Fail to decode avro message!");
+      throw new ParseException(e, "Failed to decode avro message!");
     }
   }
 

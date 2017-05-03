@@ -26,13 +26,16 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import io.druid.data.input.avro.AvroExtensionsModule;
+import io.druid.data.input.avro.AvroStreamInputRowParser;
+import io.druid.data.input.avro.confluent.CachedSchemaRepositoryClientWrapper;
+import io.druid.data.input.avro.confluent.ConfluentSubjectAndIdConverter;
+import io.druid.data.input.avro.InMemoryAvroSchemaRepository;
 import io.druid.data.input.avro.SchemaRepoBasedAvroBytesDecoder;
 import io.druid.data.input.impl.DimensionsSpec;
 import io.druid.data.input.impl.TimeAndDimsParseSpec;
 import io.druid.data.input.impl.TimestampSpec;
-import io.druid.data.input.schemarepo.Avro1124RESTRepositoryClientWrapper;
-import io.druid.data.input.schemarepo.Avro1124SubjectAndIdConverter;
-import org.apache.avro.Schema;
+import io.druid.data.input.avro.schemarepo.Avro1124RESTRepositoryClientWrapper;
+import io.druid.data.input.avro.schemarepo.Avro1124SubjectAndIdConverter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
@@ -40,13 +43,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.joda.time.DateTime;
 import org.junit.Before;
 import org.junit.Test;
-import org.schemarepo.InMemoryRepository;
-import org.schemarepo.Repository;
 import org.schemarepo.SchemaValidationException;
-import org.schemarepo.api.TypedSchemaRepository;
-import org.schemarepo.api.converter.AvroSchemaConverter;
-import org.schemarepo.api.converter.IdentityConverter;
-import org.schemarepo.api.converter.IntegerConverter;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
@@ -128,7 +125,7 @@ public class AvroStreamInputRowParserTest
   @Test
   public void testSerde() throws IOException
   {
-    Repository repository = new Avro1124RESTRepositoryClientWrapper("http://github.io");
+    Avro1124RESTRepositoryClientWrapper repository = new Avro1124RESTRepositoryClientWrapper("http://github.io", TOPIC);
     AvroStreamInputRowParser parser = new AvroStreamInputRowParser(
         PARSE_SPEC,
         new SchemaRepoBasedAvroBytesDecoder<String, Integer>(new Avro1124SubjectAndIdConverter(TOPIC), repository)
@@ -141,11 +138,27 @@ public class AvroStreamInputRowParserTest
     assertEquals(parser, parser2);
   }
 
+    @Test
+    public void testSerdeWithConfluent() throws IOException
+    {
+        CachedSchemaRepositoryClientWrapper repository = new CachedSchemaRepositoryClientWrapper("http://github.io", 100);
+        AvroStreamInputRowParser parser = new AvroStreamInputRowParser(
+                PARSE_SPEC,
+                new SchemaRepoBasedAvroBytesDecoder<String, Integer>(new ConfluentSubjectAndIdConverter(TOPIC), repository)
+        );
+        ByteBufferInputRowParser parser2 = jsonMapper.readValue(
+                jsonMapper.writeValueAsString(parser),
+                ByteBufferInputRowParser.class
+        );
+
+        assertEquals(parser, parser2);
+    }
+
   @Test
   public void testParse() throws SchemaValidationException, IOException
   {
     // serde test
-    Repository repository = new InMemoryRepository(null);
+    InMemoryAvroSchemaRepository repository = new InMemoryAvroSchemaRepository();
     AvroStreamInputRowParser parser = new AvroStreamInputRowParser(
         PARSE_SPEC,
         new SchemaRepoBasedAvroBytesDecoder<String, Integer>(new Avro1124SubjectAndIdConverter(TOPIC), repository)
@@ -154,20 +167,14 @@ public class AvroStreamInputRowParserTest
         jsonMapper.writeValueAsString(parser),
         ByteBufferInputRowParser.class
     );
-    repository = ((SchemaRepoBasedAvroBytesDecoder) ((AvroStreamInputRowParser) parser2).getAvroBytesDecoder()).getSchemaRepository();
+    repository = (InMemoryAvroSchemaRepository) ((SchemaRepoBasedAvroBytesDecoder) ((AvroStreamInputRowParser) parser2).getAvroBytesDecoder()).getSchemaRepository();
 
     // prepare data
     GenericRecord someAvroDatum = buildSomeAvroDatum();
 
     // encode schema id
     Avro1124SubjectAndIdConverter converter = new Avro1124SubjectAndIdConverter(TOPIC);
-    TypedSchemaRepository<Integer, Schema, String> repositoryClient = new TypedSchemaRepository<Integer, Schema, String>(
-        repository,
-        new IntegerConverter(),
-        new AvroSchemaConverter(),
-        new IdentityConverter()
-    );
-    Integer id = repositoryClient.registerSchema(TOPIC, SomeAvroDatum.getClassSchema());
+    Integer id = repository.register(TOPIC, SomeAvroDatum.getClassSchema());
     ByteBuffer byteBuffer = ByteBuffer.allocate(4);
     converter.putSubjectAndId(TOPIC, id, byteBuffer);
     ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -181,6 +188,41 @@ public class AvroStreamInputRowParserTest
 
     assertInputRowCorrect(inputRow);
   }
+
+    @Test
+    public void testParseWithConfluent() throws SchemaValidationException, IOException
+    {
+        // serde test
+        InMemoryAvroSchemaRepository repository = new InMemoryAvroSchemaRepository();
+        AvroStreamInputRowParser parser = new AvroStreamInputRowParser(
+                PARSE_SPEC,
+                new SchemaRepoBasedAvroBytesDecoder<String, Integer>(new ConfluentSubjectAndIdConverter(TOPIC), repository)
+        );
+        ByteBufferInputRowParser parser2 = jsonMapper.readValue(
+                jsonMapper.writeValueAsString(parser),
+                ByteBufferInputRowParser.class
+        );
+        repository = (InMemoryAvroSchemaRepository) ((SchemaRepoBasedAvroBytesDecoder) ((AvroStreamInputRowParser) parser2).getAvroBytesDecoder()).getSchemaRepository();
+
+        // prepare data
+        GenericRecord someAvroDatum = buildSomeAvroDatum();
+
+        // encode schema id
+        ConfluentSubjectAndIdConverter converter = new ConfluentSubjectAndIdConverter(TOPIC);
+        Integer id = repository.register(TOPIC, SomeAvroDatum.getClassSchema());
+        ByteBuffer byteBuffer = ByteBuffer.allocate(5);
+        converter.putSubjectAndId(TOPIC, id, byteBuffer);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(byteBuffer.array());
+        // encode data
+        DatumWriter<GenericRecord> writer = new GenericDatumWriter<GenericRecord>(someAvroDatum.getSchema());
+        // write avro datum to bytes
+        writer.write(someAvroDatum, EncoderFactory.get().directBinaryEncoder(out, null));
+
+        InputRow inputRow = parser2.parse(ByteBuffer.wrap(out.toByteArray()));
+
+        assertInputRowCorrect(inputRow);
+    }
 
   public static void assertInputRowCorrect(InputRow inputRow)
   {
