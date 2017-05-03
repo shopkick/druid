@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.druid.data.input.schemarepo;
+package io.druid.data.input.avro;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
 import io.druid.java.util.common.Pair;
-
+import io.druid.data.input.avro.confluent.ConfluentSubjectAndIdConverter;
+import io.druid.data.input.avro.schemarepo.Avro1124SubjectAndIdConverter;
 import org.schemarepo.api.converter.Converter;
 
 import java.nio.ByteBuffer;
@@ -44,9 +44,10 @@ import java.nio.ByteBuffer;
  * You can implement your own SubjectAndIdConverter based on your scenario, such as using canonical name of avro schema
  * as subject name and incrementing short integer which serialized using varint.
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", defaultImpl = Avro1124SubjectAndIdConverter.class)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", defaultImpl = ConfluentSubjectAndIdConverter.class)
 @JsonSubTypes(value = {
-    @JsonSubTypes.Type(name = "avro_1124", value = Avro1124SubjectAndIdConverter.class)
+    @JsonSubTypes.Type(name = "avro_1124", value = Avro1124SubjectAndIdConverter.class),
+    @JsonSubTypes.Type(name = "confluent", value = ConfluentSubjectAndIdConverter.class)
 })
 public interface SubjectAndIdConverter<SUBJECT, ID>
 {

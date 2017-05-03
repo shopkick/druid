@@ -78,6 +78,8 @@
                                 <argument>-c</argument>
                                 <argument>io.druid.extensions:druid-avro-extensions</argument>
                                 <argument>-c</argument>
+                                <argument>io.druid.extensions.contrib:druid-parquet-extensions</argument>
+                                <argument>-c</argument>
                                 <argument>io.druid.extensions:druid-caffeine-cache</argument>
                                 <argument>-c</argument>
                                 <argument>io.druid.extensions:druid-datasketches</argument>
@@ -147,6 +149,20 @@
                             <tarLongFileMode>posix</tarLongFileMode>
                             <descriptors>
                                 <descriptor>src/assembly/assembly.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>sk_distro-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <finalName>sk_${project.parent.artifactId}-${project.parent.version}</finalName>
+                            <tarLongFileMode>posix</tarLongFileMode>
+                            <descriptors>
+                                <descriptor>src/assembly/sk_assembly.xml</descriptor>
                             </descriptors>
                         </configuration>
                     </execution>

@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package io.druid.data.input.schemarepo;
+package io.druid.data.input.avro.confluent;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import io.druid.java.util.common.Pair;
-
+import io.druid.data.input.avro.SubjectAndIdConverter;
 import org.schemarepo.api.converter.Converter;
 import org.schemarepo.api.converter.IdentityConverter;
 import org.schemarepo.api.converter.IntegerConverter;
@@ -30,33 +29,40 @@ import org.schemarepo.api.converter.IntegerConverter;
 import java.nio.ByteBuffer;
 
 /**
- * This implementation using injected Kafka topic name as subject name, and an integer as schema id. Before sending avro
- * message to Kafka broker, you need to register the schema to an schema repository, get the schema id, serialized it to
- * 4 bytes and then insert them to the head of the payload. In the reading end, you extract 4 bytes from raw messages,
- * deserialize and return it with the topic name, with which you can lookup the avro schema.
+ * This implementation uses a subject name, and an integer as schema id.
+ * Before sending avro message to Kafka broker, you need to prepend a magic byte of zero,
+ * register the schema to an schema repository, get the schema id, serialized it to 4 bytes and then
+ * write it after the magic byte, then you can serialize the avro message. On the reading end, you
+ * extract the magic byte, then the 4 bytes of the schema id from raw messages, using the subject and
+ * the id you can then look up the avro schema.
  *
  * @see SubjectAndIdConverter
  */
-public class Avro1124SubjectAndIdConverter implements SubjectAndIdConverter<String, Integer>
+public class ConfluentSubjectAndIdConverter implements SubjectAndIdConverter<String, Integer>
 {
-  private final String topic;
+  private static final byte MAGIC_BYTE = 0;
+  private final String subject;
 
   @JsonCreator
-  public Avro1124SubjectAndIdConverter(@JsonProperty("topic") String topic)
+  public ConfluentSubjectAndIdConverter(@JsonProperty("subject") String subject)
   {
-    this.topic = topic;
+    this.subject = subject;
   }
 
 
   @Override
   public Pair<String, Integer> getSubjectAndId(ByteBuffer payload)
   {
-    return new Pair<String, Integer>(topic, payload.getInt());
+    if(payload.get() != MAGIC_BYTE) {
+      throw new IllegalArgumentException("The payload did not contain the Confluent magic byte.");
+    }
+    return new Pair<String, Integer>(subject, payload.getInt());
   }
 
   @Override
   public void putSubjectAndId(String subject, Integer id, ByteBuffer payload)
   {
+    payload.put(MAGIC_BYTE);
     payload.putInt(id);
   }
 
@@ -73,9 +79,9 @@ public class Avro1124SubjectAndIdConverter implements SubjectAndIdConverter<Stri
   }
 
   @JsonProperty
-  public String getTopic()
+  public String getSubject()
   {
-    return topic;
+    return subject;
   }
 
   @Override
@@ -88,15 +94,15 @@ public class Avro1124SubjectAndIdConverter implements SubjectAndIdConverter<Stri
       return false;
     }
 
-    Avro1124SubjectAndIdConverter converter = (Avro1124SubjectAndIdConverter) o;
+    ConfluentSubjectAndIdConverter converter = (ConfluentSubjectAndIdConverter) o;
 
-    return !(topic != null ? !topic.equals(converter.topic) : converter.topic != null);
+    return !(subject != null ? !subject.equals(converter.subject) : converter.subject != null);
 
   }
 
   @Override
   public int hashCode()
   {
-    return topic != null ? topic.hashCode() : 0;
+    return subject != null ? subject.hashCode() : 0;
   }
 }
